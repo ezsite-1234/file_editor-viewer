@@ -1,0 +1,140 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>簡単ファイルエディター&ビューアー</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-top: 100px;
+    }
+
+    .file-box {
+      margin: 20px auto;
+      width: 200px;
+      height: 40px;
+      border: 4px solid black;
+      background-color: #ccc;
+      line-height: 40px;
+      position: relative;
+    }
+
+    .file-box input {
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+    }
+
+    textarea {
+      width: 80%;
+      height: 400px;
+      font-size: 16px;
+      display: block;
+      margin: 20px auto;
+      border: 8px solid black;
+      padding: 10px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px 40px;
+      font-size: 16px;
+      background-color: #ccc;
+      border: 4px solid black;
+      cursor: pointer;
+    }
+
+    small {
+      display: block;
+      margin-top: 40px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>簡単ファイルエディター&ビューアー</h1>
+  <h1>File editor&viewer</h1>
+
+  <div class="file-box">
+    ファイルを選択 Select File
+    <input type="file" id="fileInput" accept=".txt,.json,.sb3,.html,.htm,.csv,.log">
+  </div>
+
+  <textarea id="editor" placeholder="ファイルをアップロードするとここに表示される Once you upload your file it will appear here"></textarea>
+  <button onclick="saveFile()">保存 Save</button>
+
+  <small>※編集可能なファイルの種類: txt, json, sb3, html, htm, csv, log (これ以外のファイルも編集できますが、うまく動作しないことがあります)</small>
+  <small>*Editable file types: txt, json, sb3, html, htm, csv, log (other files can also be edited, but may not work properly)</small>
+
+  <small>※ファイルのサイズが大きいと、動作が不安定になることがあります</small>
+  <small>*If the file size is large, operation may become unstable.</small>
+
+  <small>※このサービスは実験中です</small>
+  <small>*This service is experimental.</small>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const editor = document.getElementById('editor');
+    let currentFileName = null;
+    let currentSB3Zip = null;
+
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      currentFileName = file.name;
+
+      if (file.name.endsWith('.sb3')) {
+        const zip = await JSZip.loadAsync(file);
+        currentSB3Zip = zip;
+        if (zip.files['project.json']) {
+          const text = await zip.files['project.json'].async('string');
+          editor.value = text;
+        } else {
+          editor.value = 'project.json が sb3 に見つかりませんでした。';
+        }
+      } else {
+        currentSB3Zip = null;
+        const reader = new FileReader();
+        reader.onload = () => {
+          editor.value = reader.result;
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    function saveFile() {
+      if (!currentFileName) return; // ファイル未選択時は何もしない
+
+      if (currentFileName.endsWith('.sb3') && currentSB3Zip) {
+        currentSB3Zip.file('project.json', editor.value);
+        currentSB3Zip.generateAsync({ type: "blob" }).then(blob => {
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = currentFileName;
+          link.click();
+        });
+      } else {
+        const blob = new Blob([editor.value], { type: "text/plain;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = currentFileName;
+        link.click();
+      }
+    }
+  </script>
+
+</body>
+</html>
